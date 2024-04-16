@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=WifiManager
+Exec=AppRun %F
+Icon=appicon
+Comment=
+Terminal=true
+Categories=Settings;

@@ -1,0 +1,14 @@
+<RCC>
+    <qresource prefix="/">
+        <file>Icons/wifi1bar.svg</file>
+        <file>Icons/wifi2bar.svg</file>
+        <file>Icons/wifi3bar.svg</file>
+        <file>Icons/wifi4bar.svg</file>
+        <file>Icons/check.svg</file>
+        <file>Icons/wifilock.svg</file>
+        <file>Icons/cancel.svg</file>
+        <file>Icons/managewifi.svg</file>
+        <file>Icons/appicon.png</file>
+        <file>Icons/appicon.svg</file>
+    </qresource>
+</RCC>
