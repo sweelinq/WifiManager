@@ -1,0 +1,98 @@
+name: Build and Release on creation of Tag
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+-[0-9]+'
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    outputs:
+      version: ${{ env.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+    
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxcb-cursor0 libxcb-keysyms1
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          aqtversion: '==3.1.*'
+          version: '6.5.2'
+          host: 'linux'
+          target: 'desktop'
+          arch: 'gcc_64'
+
+      - name: Get tag as version
+        id: set_version
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+        
+      - name: Add version to main.qml
+        run: sed -i "s/VERSION_PLACEHOLDER/${{ env.version }}/g" main.qml
+
+      - name: Compile the project
+        run: |
+          mkdir build
+          cd build
+          qmake ../WifiManager.pro
+          make
+
+      - name: Setup AppImage tools
+        run: |
+          wget https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage
+          chmod +x linuxdeployqt-continuous-x86_64.AppImage
+
+      - name: Copy files and build AppImage
+        run: |
+          mkdir WifiManager.appdir
+          cp Deployment/default.desktop WifiManager.appdir/
+          cp Icons/appicon.png WifiManager.appdir/
+          cp build/WifiManager WifiManager.appdir/
+          ./linuxdeployqt-continuous-x86_64.AppImage WifiManager.appdir/WifiManager -qmake=$(which qmake) -qmldir=$PWD -appimage
+
+      - name: Rename AppImage
+        run: mv WifiManager*.AppImage WifiManager-${{ env.version }}.AppImage
+
+      - name: Upload AppImage as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: WifiManager-AppImage
+          path: WifiManager-${{ env.version }}.AppImage
+
+  release:
+    needs: build
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: WifiManager-AppImage
+          path: release
+
+      - name: List files in the release directory
+        run: ls -la release/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/WifiManager-${{ needs.build.outputs.version }}.AppImage
+          tag_name: ${{ needs.build.outputs.version }}
+          name: "${{ needs.build.outputs.version }}"
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
